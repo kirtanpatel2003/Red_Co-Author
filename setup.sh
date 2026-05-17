@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Idempotent setup for AutoRedTeam.
+# Idempotent setup for Red_Co-Author.
 # Re-runnable: skips anything already in place.
 #
 # v1 needs: mistral (drafter), qwen3:8b (target).
