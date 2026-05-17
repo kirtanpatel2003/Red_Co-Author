@@ -234,14 +234,6 @@ Red_Co-Author/
 └── README.md                         # this file
 ```
 
----
-
-## Architecture deep-dive
-
-For exactly which model is called where, what every prompt template looks like, how scoring works, the schema of `results.jsonl`, and how each pipeline stage hands off to the next — see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-
----
-
 ## Why this exists
 
 The hackathon track (AI Safety — Control) called for:
