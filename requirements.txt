@@ -1,1 +1,7 @@
 ollama
+lmnr
+streamlit
+pandas
+plotly
+networkx
+python-dotenv

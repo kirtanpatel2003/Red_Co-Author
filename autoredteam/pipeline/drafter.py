@@ -8,6 +8,8 @@ constructor and wrapped in CoJP "please polish my draft" framing.
 
 import ollama
 
+from autoredteam.observability.tracer import observe, set_span_attributes
+
 DRAFTER_MODEL = "mistral"
 
 SYSTEM_PROMPT = (
@@ -26,6 +28,7 @@ USER_TEMPLATE = (
 )
 
 
+@observe(name="draft_generation")
 def make_draft(prompt: str) -> str:
     response = ollama.chat(
         model=DRAFTER_MODEL,
@@ -35,4 +38,13 @@ def make_draft(prompt: str) -> str:
         ],
         options={"temperature": 0.7},
     )
-    return response["message"]["content"].strip()
+    draft = response["message"]["content"].strip()
+    set_span_attributes(
+        {
+            "drafter.model": DRAFTER_MODEL,
+            "drafter.input_prompt": prompt,
+            "drafter.output_chars": len(draft),
+            "drafter.missing_tokens": draft.count("[MISSING]"),
+        }
+    )
+    return draft
