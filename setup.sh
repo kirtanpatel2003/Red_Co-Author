@@ -3,7 +3,8 @@
 # Re-runnable: skips anything already in place.
 #
 # v1 needs: mistral (drafter), qwen3:8b (target).
-# Add llama3 (v2 judge), lmnr/streamlit/pandas (v3/v4) when those versions land.
+# v2 adds:  llama3 (judge).
+# v3/v4:    lmnr, streamlit, pandas — append when those versions land.
 
 set -euo pipefail
 
@@ -11,7 +12,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$REPO_ROOT"
 
 VENV_DIR=".venv"
-REQUIRED_MODELS=("mistral" "qwen3:8b")
+REQUIRED_MODELS=("mistral" "qwen3:8b" "llama3")
 
 say()  { printf "\033[1;36m[setup]\033[0m %s\n" "$*"; }
 warn() { printf "\033[1;33m[warn]\033[0m  %s\n" "$*"; }
