@@ -1,4 +1,8 @@
-"""Runner: send prompts to the target model and capture response + latency."""
+"""Runner: send prompts to a target model and capture response + latency.
+
+The target model is now a first-class parameter — v5 lets one prompt run
+against multiple targets so we can compare ASR / RAR across models.
+"""
 
 import time
 from dataclasses import dataclass
@@ -7,18 +11,22 @@ import ollama
 
 from autoredteam.observability.tracer import observe, set_span_attributes
 
-TARGET_MODEL = "qwen3:8b"
+DEFAULT_TARGET = "qwen3:8b"
+TARGET_CHOICES: tuple[str, ...] = ("qwen3:8b", "gemma2", "phi3")
 
 
 @dataclass
 class TargetResult:
     response: str
     latency_ms: int
+    model: str
 
 
 @observe(name="target_query")
 def run_target(
-    prompt: str, model: str = TARGET_MODEL, path: str = "unspecified"
+    prompt: str,
+    model: str = DEFAULT_TARGET,
+    path: str = "unspecified",
 ) -> TargetResult:
     t0 = time.perf_counter()
     response = ollama.chat(
@@ -36,11 +44,11 @@ def run_target(
             "runner.response_chars": len(text),
         }
     )
-    return TargetResult(response=text, latency_ms=latency_ms)
+    return TargetResult(response=text, latency_ms=latency_ms, model=model)
 
 
 def run_both(
-    direct_prompt: str, cojp_prompt: str, model: str = TARGET_MODEL
+    direct_prompt: str, cojp_prompt: str, model: str = DEFAULT_TARGET
 ) -> tuple[TargetResult, TargetResult]:
     return (
         run_target(direct_prompt, model, path="direct"),

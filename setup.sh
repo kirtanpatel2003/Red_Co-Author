@@ -4,7 +4,9 @@
 #
 # v1 needs: mistral (drafter), qwen3:8b (target).
 # v2 adds:  llama3 (judge).
-# v3/v4:    lmnr, streamlit, pandas — append when those versions land.
+# v3/v4:    lmnr, streamlit, plotly — added in requirements.txt.
+# v5 adds:  gemma2, phi3 (additional targets for the multi-model sweep).
+# v7 adds:  nomic-embed-text (Ollama embeddings for the trained monitor).
 
 set -euo pipefail
 
@@ -12,7 +14,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$REPO_ROOT"
 
 VENV_DIR=".venv"
-REQUIRED_MODELS=("mistral" "qwen3:8b" "llama3")
+REQUIRED_MODELS=("mistral" "qwen3:8b" "llama3" "gemma2" "phi3" "nomic-embed-text")
 
 say()  { printf "\033[1;36m[setup]\033[0m %s\n" "$*"; }
 warn() { printf "\033[1;33m[warn]\033[0m  %s\n" "$*"; }
