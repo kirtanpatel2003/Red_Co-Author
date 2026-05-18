@@ -4,8 +4,6 @@ __pycache__/
 *$py.class
 
 # Red_Co-Author artifacts
-results.jsonl
-datasets/advbench.csv
 monitor/artifacts/*.joblib
 
 # C extensions
@@ -221,5 +219,4 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
-docs/
 .DS_Store

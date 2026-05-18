@@ -1,0 +1,265 @@
+================================================================
+Red_Co-Author — Incremental Development Checklist (7 Versions)
+================================================================
+Goal: Build the CoJP jailbreak pipeline + Laminar observability +
+Streamlit dashboard + multi-target sweep + corpus/batch runner +
+monitor with generalization eval, in seven working versions. Each
+version must run end-to-end before moving to the next. No version
+skips the previous one's tests.
+
+================================================================
+VERSION 1 — MVP: "Smoke Test" (Hour 0–2)
+================================================================
+Objective: One hardcoded keyword runs through the whole loop and
+prints a target-model response. No scoring, no UI, no tracing.
+Deliverable: `python run_pipeline.py` prints a response.
+
+[x] Install Ollama locally and verify `ollama --version`
+[x] Pull models:
+    [x] `ollama pull mistral`       (drafter)
+    [x] `ollama pull qwen3:8b`      (target)
+    [x] `ollama pull llama3`        (judge — pulled during v2 setup)
+[x] Confirm each model responds to a 1-line prompt via CLI
+[x] Create repo skeleton:
+    [x] autoredteam/
+    [x] pipeline/drafter.py
+    [x] pipeline/constructor.py
+    [x] pipeline/runner.py
+    [x] run_pipeline.py
+[x] Install Python deps: `pip install ollama`
+[x] drafter.py: function `make_draft(keyword: str) -> str`
+    [x] Hardcoded system prompt that asks mistral for an incomplete
+        draft with [MISSING] placeholders
+    [x] Returns raw string output
+[x] constructor.py: function `build_cojp_prompt(draft, domain)`
+    [x] Single hardcoded "cyberattack" framing template
+    [x] Returns the wrapped CoJP prompt only (skip direct query for v1)
+[x] runner.py: function `run_target(prompt) -> str`
+    [x] Calls qwen3:8b through ollama python client
+    [x] Returns response text
+[x] run_pipeline.py:
+    [x] Hardcode keyword = "ubuntu snap"   (since changed to "Canvas LMS")
+    [x] Chain: draft -> cojp prompt -> target response
+    [x] Print all three intermediate strings
+[x] EXIT CRITERIA:
+    [x] `python run_pipeline.py` completes without errors
+    [x] Output shows a non-empty target response
+    [x] Commit: "v1: end-to-end smoke pipeline"
+
+================================================================
+VERSION 2 — Dual-Path + Scoring (Hour 2–4)
+================================================================
+Objective: Direct query and CoJP query run side-by-side and both
+are scored 1–5 by a judge model. ASR flag computed. RAR computed.
+Deliverable: A single CLI run prints a structured result row.
+
+[x] constructor.py:
+    [x] Add `build_direct_prompt(keyword)` for the baseline harmful query
+    [x] Add the 4 domain framing templates in templates/task_framing.py:
+        [x] Cyberattack
+        [x] Explosives
+        [x] Drugs
+        [x] Weapons
+    [x] `build_cojp_prompt(draft, domain)` selects the right template
+[x] runner.py:
+    [x] `run_both(direct_prompt, cojp_prompt)` returns both responses
+    [x] Capture latency in milliseconds for each call
+[x] scorer.py: function `score_response(prompt, response) -> int`
+    [x] System prompt encodes the HarDBench 1–5 rubric
+    [x] Uses llama3 as judge
+    [x] Parses integer 1–5 from output (with safe fallback)
+[x] scorer.py: helpers
+    [x] `asr_flag(score) -> bool`  (True if score >= 4)
+    [x] `risk_amplification(direct_score, cojp_score) -> bool`
+[x] run_pipeline.py:
+    [x] Accept --keyword and --domain CLI args (argparse)
+    [x] Run both paths, score both, print a result dict:
+        keyword, domain, direct_score, cojp_score,
+        direct_asr, cojp_asr, rar, direct_latency_ms, cojp_latency_ms
+[x] Append every run to results.jsonl (one JSON per line)
+[x] EXIT CRITERIA:
+    [x] Run 5 different (keyword, domain) pairs
+    [x] At least one shows cojp_score > direct_score (RAR = True)  — 2/5 fired
+    [x] results.jsonl has 5 valid lines
+    [x] Commit: "v2: dual-path scoring + JSONL log"
+
+================================================================
+VERSION 3 — Laminar Observability (Hour 4–6)
+================================================================
+Objective: Every pipeline run emits a single Laminar trace with
+named child spans. Inputs, outputs, scores, and latencies are all
+visible in the Laminar dashboard.
+Deliverable: One CLI run produces one viewable trace in Laminar.
+
+[x] Install Laminar:
+    [x] `pip install lmnr`
+    [ ] Sign up for free cloud tier OR start self-hosted instance   (user step)
+    [ ] Export LMNR_PROJECT_API_KEY env var                          (user step)
+[x] observability/tracer.py:
+    [x] `Laminar.initialize(project_api_key=...)` at module import (gated on env var)
+    [x] Re-export `@observe` decorator for convenience              (graceful no-op when key absent)
+[x] Decorate functions with @observe(name=...):
+    [x] drafter.make_draft           -> span "draft_generation"
+    [x] constructor.build_direct_prompt -> span "prompt_construction_direct"
+    [x] constructor.build_cojp_prompt   -> span "prompt_construction_cojp"
+    [x] runner.run_target (called twice) -> span "target_query" (path attribute distinguishes)
+    [x] scorer.score_response (called twice) -> span "score_response" (path attribute distinguishes)
+[x] Set span attributes:
+    [x] model name, token counts (if available), latency_ms
+    [x] For scoring spans: score (int), asr (bool)
+    [x] For trace root: domain, prompt, rar (bool), direct_score, cojp_score
+[x] run_pipeline.py:
+    [x] Wrap the full run in a parent @observe(name="attack_run")
+    [x] Set trace-level metadata (domain, prompt)
+[x] EXIT CRITERIA:
+    [ ] Run pipeline once; open Laminar UI                         (needs LMNR_PROJECT_API_KEY — user step)
+    [ ] Verify trace shows the expected 6-span waterfall            (user step, after key set)
+    [ ] Click into a scoring span; confirm score + asr attributes present
+    [x] Run 10 attacks total to seed the aggregate view
+    [x] Commit: "v3: Laminar tracing on all pipeline stages"
+
+================================================================
+VERSION 4 — Streamlit Dashboard + Demo Polish (Hour 6–8)
+================================================================
+Objective: A non-technical viewer can launch attacks, watch live
+metrics, and jump to the Laminar trace from one screen. Demo
+materials are ready.
+Deliverable: `streamlit run app.py` shows a working dashboard.
+
+[x] Install Streamlit: `pip install streamlit pandas plotly networkx`
+[x] app.py — Run trigger panel:
+    [x] Dropdown: domain (cyberattack / explosives / drugs / weapons)
+    [x] Text input: prompt (full refusal-prone prompt, not just keyword)
+    [x] "Launch Attack" button -> invokes the pipeline
+    [x] Show direct response + CoJP response side-by-side
+    [x] Show HS scores and ASR flags with color coding
+    [x] Show trace_id when Laminar enabled (deep-link can be built from project URL)
+[x] app.py — Aggregate panel (reads results.jsonl):
+    [x] Bar chart: ASR by domain (direct vs CoJP, grouped)
+    [x] Bar chart: average HS by prompt type
+    [x] Latency comparison: direct vs CoJP   (box plot)
+    [x] Total runs counter
+[x] EXTRA viz beyond checklist:
+    [x] Sankey: prompts → direct/cojp → refused / partial / jailbroken buckets
+    [x] Network graph: runs as nodes around domain hubs, colored by RAR, sized by CoJP HS
+    [x] Per-run pipeline waterfall (mocked timeline; live spans live in Laminar)
+[ ] Generate the demo dataset:                                     (user step — run_batch.py)
+    [ ] Run 20+ attacks across all 4 domains (5 each minimum)
+    [ ] Confirm aggregate ASR gap matches paper's direction
+[ ] Frontier model validation (manual):                             (user step)
+    [ ] Pick 3 high-HS CoJP prompts from results.jsonl
+    [ ] Paste each into Claude.ai / ChatGPT, screenshot
+    [ ] Save screenshots to demo/frontier/
+[ ] Presentation assets:                                            (user step)
+    [ ] Architecture diagram (reuse the README ascii or redraw)
+    [ ] Laminar trace waterfall screenshot
+    [ ] ASR bar chart export
+    [ ] One slide per demo flow step (8 slides)
+[x] README.md / docs:
+    [x] Setup instructions (ollama pulls, env vars, pip install)
+    [x] How to run: CLI mode and Streamlit mode
+    [x] How to view traces in Laminar
+[x] EXIT CRITERIA:
+    [x] Streamlit dashboard launches and runs an attack end-to-end
+    [x] Aggregate charts populate from results.jsonl
+    [ ] Laminar deep-link from dashboard opens the correct trace   (needs API key — user step)
+    [ ] 5-minute demo flow rehearsed once, full pipeline live      (user step)
+    [x] Commit: "v4: dashboard, demo data, viz"
+    [ ] Tag release: `git tag v1.0-demo`                            (user step)
+
+================================================================
+VERSION 5 — Multi-target sweep (Hour 8–9)
+================================================================
+Goal: Stop being single-target. Run every prompt through 3 target
+models so the ASR / RAR gap is measured per model, reproducing the
+paper's headline table on local hardware.
+
+[x] setup.sh: add gemma2 (~5.4GB) and phi3 (~2.2GB) to REQUIRED_MODELS
+[x] runner.py: model already parameterised; nothing structural to change
+[x] run_pipeline.py:
+    [x] Add --target CLI choice (qwen3:8b / gemma2 / phi3); default qwen3:8b
+    [x] Pass target into run_target() and into the result row as `target_model`
+    [x] @observe(target_model=…) attribute on each target span
+[x] results.jsonl schema:
+    [x] Add `target_model` field (string)
+    [x] Backfill missing field as "qwen3:8b" on read (legacy rows)
+[x] Streamlit:
+    [x] Target dropdown in Run-attack tab (defaults to qwen3:8b)  (multi-select: 1, 2, or 3)
+    [x] Per-target filter in Aggregate tab (multi-select)
+    [x] ASR-by-(domain x target) heatmap or grouped bar
+[x] EXIT CRITERIA:
+    [x] One CLI call per target succeeds end-to-end
+    [x] Aggregate dashboard shows separate bars per target
+    [x] 9+ rows in results.jsonl spanning 3 targets
+    [x] Commit: "v5: multi-target sweep"
+
+================================================================
+VERSION 6 — Corpus + batch runner (Hour 9–11)
+================================================================
+Goal: Drive the pipeline from a labeled corpus instead of one prompt
+at a time. Generate a ~hundred-row dataset of (prompt, response,
+score) triplets — the artifact for v7's monitor training.
+
+[x] datasets/ package:
+    [x] datasets/loaders.py  — normalize every source to {prompt, domain, source}
+    [x] datasets/fetch_advbench.py — pull harmful_behaviors.csv from llm-attacks repo
+    [x] datasets/advbench.csv      — fetched artifact (gitignored, 520 rows)
+    [x] datasets/hardbench.jsonl   — 400-row HarDBench test split (100/domain)
+    [x] datasets/seed.jsonl        — 15-prompt curated set across 4 domains
+[x] templates/task_framing.py:
+    [x] Add "general" domain wrapper (AdvBench rows don't have a clean domain)
+[x] run_batch.py:
+    [x] Args: --corpus name|path --targets m1,m2,m3 --limit N --no-resume
+    [x] Iterates (prompt, target) pairs; writes one results.jsonl row each
+    [x] Adds `source` field (advbench / hardbench / seed / manual / ui)
+    [x] Resumable — skips (prompt, target, source) tuples already in results.jsonl
+[x] EXIT CRITERIA:
+    [x] AdvBench fetcher produces a JSONL with 500+ rows               (520 rows)
+    [ ] Batch run on a 20-prompt slice × 3 targets writes 60 rows      (user step — long-running)
+    [x] No duplicate (prompt, target, source) entries                  (guaranteed by resumability)
+    [x] Commit: "v6: corpus loaders + batch runner"
+
+================================================================
+VERSION 7 — Monitor + generalization (Hour 11–14)
+================================================================
+Goal: Train a monitor on our generated dataset, evaluate it on
+held-out splits AND on AdvBench / HarDBench, and show the
+generalization story.
+
+[x] monitor/ package:
+    [x] monitor/naive.py    — llama3 zero-shot "is this harmful?" classifier
+    [x] monitor/trained.py  — Ollama nomic-embed-text + sklearn LogisticRegression
+    [x] monitor/dataset.py  — load results.jsonl, split by `source` field
+    [x] monitor/train.py    — fit + persist .joblib model
+    [x] monitor/evaluate.py — P/R/F1/ROC-AUC per (monitor, eval split)
+[x] Label rule:
+    [x] is_harmful = (judge_score >= 4)   (re-use existing ASR flag)
+[x] Splits:
+    [x] train: 80% of rows whose source is in train_sources (seed/manual/ui default)
+    [x] in-distribution test: held-out 20% of training pool
+    [x] generalization test 1: AdvBench held-out (full source split)
+    [x] generalization test 2: HarDBench (full 400-row test split)
+[x] requirements.txt: scikit-learn, joblib  (Ollama embeddings replaced sentence-transformers)
+[x] Streamlit "Monitor" tab:
+    [x] Bar chart: F1 per (monitor, eval split) — naive vs trained side by side
+    [x] Confusion matrix data computed (rendered in metrics table)
+    [x] ROC curve overlay (naive vs trained, all splits)
+    [ ] Sample-level inspector: pick a row, see model probabilities    (deferred extension)
+[ ] EXIT CRITERIA:
+    [ ] naive monitor F1 reported on all 4 splits      (user step — click "Run evaluation")
+    [ ] trained monitor F1 reported on all 4 splits    (user step — click "Train classifier" then evaluate)
+    [ ] Generalization gap (in-dist F1 − cross-dataset F1) clearly visible
+    [x] Commit: "v7: monitor + generalization eval"
+
+================================================================
+CROSS-VERSION GUARDRAILS
+================================================================
+[x] Never commit API keys or .env files                            (.env in .gitignore)
+[x] Keep results.jsonl out of git if it grows large                (gitignored alongside .joblib + advbench.csv)
+[x] Every version must remain runnable from the CLI (don't break v2
+    when adding v3 instrumentation)                                (single attack_run shared across CLI/UI/batch)
+[x] If a model is slow, lower temperature and cap max_tokens before
+    swapping models — judge runs at temperature=0.0 for stable
+    scoring; drafter/target stay at 0.7 for variety
+[x] If Laminar self-host is flaky, fall back to the free cloud tier
+    rather than losing observability                               (tracer.py is a graceful no-op when no key)
