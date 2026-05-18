@@ -78,20 +78,20 @@ Everything ships through a Streamlit dashboard with live attack runs, ASR-by-tar
 |  target runner (1, 2, or 3 of: qwen3:8b / gemma2 / phi3)       |
 |  produces direct_response and cojp_response with latencies     |
 +----------------------------------------------------------------+
-       |
-       v
+                                |
+                                v
 +----------------------------------------------------------------+
 |  judge (llama3) scores both responses 1 to 5                    |
 |  computes ASR flag and Risk Amplification (RAR) flag            |
 +----------------------------------------------------------------+
-       |
-       v
+                                |
+                                v
 +----------------------------------------------------------------+
 |  results.jsonl  (append only)                                   |
 |  one row per (prompt, target_model)                             |
 +----------------------------------------------------------------+
-       |
-       v
+                                |
+                                v
 +----------------------------------------------------------------+
 |  monitor (defender)                                             |
 |   naive:    llama3 zero-shot  "HARMFUL / SAFE"                  |
@@ -111,6 +111,7 @@ For the full per-stage walkthrough see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.
 
 After you have Ollama installed and running:
 
+**macOS / Linux**
 ```bash
 git clone https://github.com/kirtanpatel2003/Red_Co-Author.git
 cd Red_Co-Author
@@ -118,7 +119,17 @@ cd Red_Co-Author
 .venv/bin/streamlit run app.py                   # open http://localhost:8501
 ```
 
-A fresh `./setup.sh` downloads roughly 22 GB of model weights. It is idempotent so re-running is safe.
+**Windows (PowerShell)**
+```powershell
+git clone https://github.com/kirtanpatel2003/Red_Co-Author.git
+cd Red_Co-Author
+.\setup.ps1                                      # pulls models, makes venv, installs deps
+.venv\Scripts\streamlit.exe run app.py           # open http://localhost:8501
+```
+
+If PowerShell blocks the script with an execution-policy error, run it with `powershell -ExecutionPolicy Bypass -File .\setup.ps1` once, or set `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` for your user.
+
+A fresh setup downloads roughly 22 GB of model weights. Both scripts are idempotent so re-running is safe.
 
 ---
 
@@ -126,25 +137,28 @@ A fresh `./setup.sh` downloads roughly 22 GB of model weights. It is idempotent 
 
 ### Prerequisites
 
-- macOS or Linux (tested on macOS 14, 16 GB RAM)
-- Python 3.11 or newer
-- Ollama 0.1.30 or newer, with the daemon running. Install from <https://ollama.com/download>.
+- macOS, Linux, or Windows 10/11. Tested on macOS 14 (16 GB RAM); the PowerShell installer is the Windows path.
+- Python 3.11 or newer. On Windows install from <https://www.python.org/downloads/> and tick **"Add Python to PATH"**.
+- Ollama 0.1.30 or newer, with the daemon running. Install from <https://ollama.com/download> (macOS / Linux) or <https://ollama.com/download/windows> (Windows). On macOS and Windows, "running" means the Ollama app is open; on Linux run `ollama serve` in another terminal.
 
 ### One-command setup
 
-```bash
-./setup.sh
-```
+| Platform | Command |
+|---|---|
+| macOS / Linux | `./setup.sh` |
+| Windows (PowerShell) | `.\setup.ps1` |
 
-`setup.sh` is idempotent. It:
+Both scripts are idempotent and do the same thing:
 
-1. Confirms `ollama --version` resolves.
-2. Confirms the Ollama daemon is reachable.
-3. Pulls any of the six required models that are not already present.
-4. Creates `.venv/` if missing and upgrades pip.
-5. Installs `requirements.txt`.
-6. Smoke-imports `ollama` to fail fast on a bad install.
-7. Prints a hint about copying `.env.example` to `.env` if you plan to use Laminar.
+1. Confirm `ollama --version` resolves.
+2. Confirm the Ollama daemon is reachable.
+3. Pull any of the six required models that are not already present.
+4. Create `.venv/` if missing and upgrade pip.
+5. Install `requirements.txt`.
+6. Smoke-import `ollama` to fail fast on a bad install.
+7. Print a hint about copying `.env.example` to `.env` if you plan to use Laminar.
+
+If you hit a PowerShell execution-policy error on Windows, run with `powershell -ExecutionPolicy Bypass -File .\setup.ps1`.
 
 ### Models pulled
 
@@ -182,9 +196,16 @@ Pulls the 520-prompt `harmful_behaviors.csv` from the public llm-attacks reposit
 
 ### Optional: configure Laminar tracing
 
+macOS / Linux:
 ```bash
 cp .env.example .env
 # edit .env and set LMNR_PROJECT_API_KEY=lmn_...
+```
+
+Windows (PowerShell):
+```powershell
+Copy-Item .env.example .env
+# edit .env in Notepad or VS Code and set LMNR_PROJECT_API_KEY=lmn_...
 ```
 
 The `.env` file is gitignored. The tracer auto-loads it on import via `python-dotenv`. When the key is unset the pipeline still runs; every `@observe` decorator becomes a no-op and nothing leaves the machine.
