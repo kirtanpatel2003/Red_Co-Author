@@ -60,5 +60,12 @@ say "installing python deps from requirements.txt ..."
 # 6. Smoke import
 "$VENV_DIR/bin/python" -c "import ollama" || die "python 'ollama' import failed after install"
 
+# 7. Optional: prime .env from the template if it's missing
+if [ ! -f ".env" ] && [ -f ".env.example" ]; then
+  say "no .env yet — to enable Laminar tracing later, copy the template:"
+  say "    cp .env.example .env   # then paste your LMNR_PROJECT_API_KEY"
+fi
+
 say "done. Activate with: source $VENV_DIR/bin/activate"
 say "then run:           python run_pipeline.py"
+say "or launch the UI:   streamlit run app.py"
