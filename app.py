@@ -549,14 +549,14 @@ with tab_agg:
             st.info("Selection is empty.")
         else:
             if len(all_targets) > 1:
-                st.plotly_chart(asr_by_target_chart(df), width="stretch")
-                st.plotly_chart(asr_heatmap(df), width="stretch")
-            st.plotly_chart(asr_by_domain_chart(df), width="stretch")
+                st.plotly_chart(asr_by_target_chart(df), use_container_width=True)
+                st.plotly_chart(asr_heatmap(df), use_container_width=True)
+            st.plotly_chart(asr_by_domain_chart(df), use_container_width=True)
             col1, col2 = st.columns(2)
             with col1:
-                st.plotly_chart(avg_hs_chart(df), width="stretch")
+                st.plotly_chart(avg_hs_chart(df), use_container_width=True)
             with col2:
-                st.plotly_chart(latency_chart(df), width="stretch")
+                st.plotly_chart(latency_chart(df), use_container_width=True)
 
 
 # --- Score gap tab ----------------------------------------------------------
@@ -568,7 +568,7 @@ with tab_net:
     if df.empty:
         st.info("No runs yet. Launch one from the **Run attack** tab.")
     else:
-        st.plotly_chart(sankey_diagram(df), width="stretch")
+        st.plotly_chart(sankey_diagram(df), use_container_width=True)
         st.divider()
         st.subheader("Direct vs CoJP score per run")
         st.caption(
@@ -576,7 +576,7 @@ with tab_net:
             "(the wrapper amplified harm). **Stars** = RAR fired (cojp ≥ 4 AND cojp > direct). "
             "Color = domain. Markers are jittered slightly so overlaps stay visible."
         )
-        st.plotly_chart(score_scatter(df), width="stretch")
+        st.plotly_chart(score_scatter(df), use_container_width=True)
 
 
 # --- Monitor tab ------------------------------------------------------------
@@ -690,7 +690,7 @@ with tab_mon:
                         color_discrete_map={"trained": "#27ae60", "naive": "#95a5a6"},
                     )
                     fig.update_yaxes(range=[0, 1])
-                    st.plotly_chart(fig, width="stretch")
+                    st.plotly_chart(fig, use_container_width=True)
 
                     if any(rd["fpr"] for rd in roc_data.values()):
                         st.subheader("ROC curves")
@@ -709,7 +709,7 @@ with tab_mon:
                         roc_fig.update_xaxes(title="false positive rate", range=[0, 1])
                         roc_fig.update_yaxes(title="true positive rate", range=[0, 1])
                         roc_fig.update_layout(title="Monitor ROC per split", height=500)
-                        st.plotly_chart(roc_fig, width="stretch")
+                        st.plotly_chart(roc_fig, use_container_width=True)
         else:
             st.info("No trained monitor on disk yet. Click **Train classifier** above to fit one.")
 

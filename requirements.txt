@@ -1,5 +1,5 @@
 ollama
-lmnr
+lmnr[all]
 streamlit
 pandas
 plotly
